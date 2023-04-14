@@ -10,3 +10,7 @@
     $ make
     $ ./same ./
 ```
+### TODO:
+> symbollic link error fix
+> add support for to read sym-link directory or not
+> parallisium

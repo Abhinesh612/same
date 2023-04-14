@@ -163,9 +163,10 @@ void get_hash(char *target_path, HASH *Hash) {
         buffer = fread(buf, 1, sizeof(buf), fd);
     }
 
-    if (ferror(fd))
+    if (ferror(fd)) {
         die();
-    
+    }
+
     fclose(fd);
 
     sha256_final(&ctx, Hash->bytes);
