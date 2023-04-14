@@ -9,7 +9,9 @@
 #include <string.h>
 #include <errno.h>
 
-#include "./sha256.h"
+#include "sha256.h"
+#define STB_DS_IMPLEMENTATION
+#include "stb_ds.h"
 
 
 #define GREEN "\033[0;32m"
@@ -27,13 +29,25 @@
 #define UNUSED(X)
 #endif
 
+typedef struct {
+    BYTE bytes[SHA256_BLOCK_SIZE];
+} HASH;
+
+typedef struct {
+    HASH key;
+    char **paths;
+} CELL;
+
+CELL *table = NULL;
+
 #define die(void) die_(__FILE__, __LINE__)
 void die_(const char *file_name, unsigned int line) __attribute__((noreturn));
 char *dir_path(const char *base_name, const char *dir_name);
 void print_file_recursively(const char *target);
-void print_hash(char *target_path);
+void get_hash(char *target_path, HASH *Hash);
+void path_free(CELL *table);
 char hex_digit(unsigned int digit);
-void hash_string(BYTE hash[SHA256_BLOCK_SIZE], char output[SHA256_BLOCK_SIZE*2 + 1]);
+void hash_string(HASH *hash, char output[SHA256_BLOCK_SIZE*2 + 1]);
 
 int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 {
@@ -42,6 +56,20 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 
     //print_file_recursively("/home/abhinesh/test");
     print_file_recursively(".");
+
+    for(ptrdiff_t i = 0 ; i < hmlen(table); ++i) {
+        if (arrlen(table[i].paths) > 1) {
+            char output[65];
+            hash_string(&table[i].key, output);
+            printf("hash: %s\n", output);
+
+            for(ptrdiff_t j = 0; j < arrlen(table[i].paths); ++j) {
+                printf("\t%s\n", table[i].paths[j]);
+            }
+        }
+    }
+
+    path_free(table);
 
     return EXIT_SUCCESS;
 }
@@ -94,11 +122,23 @@ void print_file_recursively(const char *target) {
             }
         }
         else {
-            printf("%sfile%s: %s\n", GREEN, COLOR_RESET, target_path);
-            print_hash(target_path);
-            printf("-------------------------------------\n");
+            HASH hash;
+            get_hash(target_path, &hash);
+            
+            //IMPLEMENTING HASH TABLE
+            ptrdiff_t index = hmgeti(table , hash);
+            if (index < 0 ) {
+                CELL cell;
+                cell.key = hash;
+                cell.paths = NULL;
+                arrput(cell.paths, target_path);
+                hmputs(table, cell);
+            }
+            else
+                arrput(table[index].paths, target_path);
         }
-        free(target_path);
+
+        //free(target_path);
         ent = readdir(dir);
     }
 
@@ -108,7 +148,14 @@ void print_file_recursively(const char *target) {
     closedir(dir);
 }
 
-void print_hash(char *target_path) {
+void path_free(CELL *table) {
+    for(ptrdiff_t i = 0; i < hmlen(table); ++i) {
+        for(ptrdiff_t j = 0; j < arrlen(table[i].paths); ++j)
+                free(table[i].paths[j]);
+    }
+}
+
+void get_hash(char *target_path, HASH *Hash) {
     SHA256_CTX ctx;
     sha256_init(&ctx);
 
@@ -125,13 +172,10 @@ void print_hash(char *target_path) {
 
     if (ferror(fd))
         die();
+    
+    fclose(fd);
 
-    BYTE hash[SHA256_BLOCK_SIZE];
-    sha256_final(&ctx, hash);
-
-    char output[32*2 + 1];
-    hash_string(hash, output);
-    printf("%shash%s: %s\n", RED, COLOR_RESET, output);
+    sha256_final(&ctx, Hash->bytes);
 }
 
 char hex_digit(unsigned int digit) {
@@ -141,10 +185,10 @@ char hex_digit(unsigned int digit) {
     assert(0 && "unreachable");
 }
 
-void hash_string(BYTE hash[SHA256_BLOCK_SIZE], char output[SHA256_BLOCK_SIZE*2 + 1]) {
+void hash_string(HASH *hash, char output[SHA256_BLOCK_SIZE*2 + 1]) {
     for(size_t i = 0; i < SHA256_BLOCK_SIZE; ++i) {
-        output[i*2 + 0] = hex_digit(hash[i] / 0x10);
-        output[i*2 + 1] = hex_digit(hash[i]);
+        output[i*2 + 0] = hex_digit(hash->bytes[i] / 0x10);
+        output[i*2 + 1] = hex_digit(hash->bytes[i]);
     }
     output[SHA256_BLOCK_SIZE*2] = '\0';
 }

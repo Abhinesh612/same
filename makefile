@@ -1,5 +1,5 @@
-CC=gcc
-CFLAG=-g -ggdb -Wall -Wextra -pedantic -std=c11
+CC=clang
+CFLAG=-g -Wall -Wextra -pedantic -Werror -std=c11
 EXEC=same
 
 SOURCES=$(wildcard *.c)
