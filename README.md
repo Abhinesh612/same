@@ -2,13 +2,11 @@
     Seach dublicate file in the directory **recursively**.
 # How to build?
 ```
-    make
-    ./same <path>
+    $ make
+    $ ./same <path>
 ```
 ## Example
 ```
-    make
-    ./same ./
+    $ make
+    $ ./same ./
 ```
-# Inspiration
-Inspired from [Tscoding](https://www.youtube.com/@TsodingDaily)
