@@ -13,7 +13,6 @@
 #define STB_DS_IMPLEMENTATION
 #include "stb_ds.h"
 
-
 #define GREEN "\033[0;32m"
 #define RED "\033[0;31m"
 #define BLUE "\033[0;34m"
@@ -21,13 +20,6 @@
 #define PURPLE "\033[0;35m"
 #define CYAN "\033[0;36m"
 #define COLOR_RESET "\033[0m"
-
-#ifndef __GNUC__
-#define __attribute__(X)
-#define UNUSED(X) (void)(X)
-#else
-#define UNUSED(X)
-#endif
 
 typedef struct {
     BYTE bytes[SHA256_BLOCK_SIZE];
@@ -41,34 +33,37 @@ typedef struct {
 CELL *table = NULL;
 
 #define die(void) die_(__FILE__, __LINE__)
-void die_(const char *file_name, unsigned int line) __attribute__((noreturn));
+void die_(const char *file_name, unsigned int line);
 char *dir_path(const char *base_name, const char *dir_name);
 void print_file_recursively(const char *target);
 void get_hash(char *target_path, HASH *Hash);
 void path_free(CELL *table);
 char hex_digit(unsigned int digit);
 void hash_string(HASH *hash, char output[SHA256_BLOCK_SIZE*2 + 1]);
+void print(CELL *table);
 
-int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
+#define SEP_INT 47
+int main(int argc, char *argv[])
 {
-    UNUSED(argc);
-    UNUSED(argv);
-
-    //print_file_recursively("/home/abhinesh/test");
-    print_file_recursively(".");
-
-    for(ptrdiff_t i = 0 ; i < hmlen(table); ++i) {
-        if (arrlen(table[i].paths) > 1) {
-            char output[65];
-            hash_string(&table[i].key, output);
-            printf("hash: %s\n", output);
-
-            for(ptrdiff_t j = 0; j < arrlen(table[i].paths); ++j) {
-                printf("\t%s\n", table[i].paths[j]);
-            }
-        }
+    (void) argc;
+    
+    if (argc != 2) {
+        fprintf(stderr, "NO Path\n");
+        exit(EXIT_FAILURE);
     }
 
+    if ((int)argv[1][strlen(argv[1]) - 1] == SEP_INT ) {
+        char path[strlen(argv[1])]; 
+        size_t i;
+        for(i = 0; i < strlen(argv[1]) - 1; ++i)
+            path[i] = argv[1][i];
+        path[i] = '\0';
+        print_file_recursively(path);
+    }
+    else
+        print_file_recursively(argv[1]);
+
+    print(table);
     path_free(table);
 
     return EXIT_SUCCESS;
@@ -125,7 +120,6 @@ void print_file_recursively(const char *target) {
             HASH hash;
             get_hash(target_path, &hash);
             
-            //IMPLEMENTING HASH TABLE
             ptrdiff_t index = hmgeti(table , hash);
             if (index < 0 ) {
                 CELL cell;
@@ -138,7 +132,6 @@ void print_file_recursively(const char *target) {
                 arrput(table[index].paths, target_path);
         }
 
-        //free(target_path);
         ent = readdir(dir);
     }
 
@@ -191,4 +184,17 @@ void hash_string(HASH *hash, char output[SHA256_BLOCK_SIZE*2 + 1]) {
         output[i*2 + 1] = hex_digit(hash->bytes[i]);
     }
     output[SHA256_BLOCK_SIZE*2] = '\0';
+}
+void print(CELL *table) {
+    for(ptrdiff_t i = 0 ; i < hmlen(table); ++i) {
+        if (arrlen(table[i].paths) > 1) {
+            char output[65];
+            hash_string(&table[i].key, output);
+            printf("%shash%s: %s\n", GREEN, COLOR_RESET, output);
+
+            for(ptrdiff_t j = 0; j < arrlen(table[i].paths); ++j) {
+                printf("\t%s\n", table[i].paths[j]);
+            }
+        }
+    }
 }
